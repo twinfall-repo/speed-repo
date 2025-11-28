@@ -30,6 +30,31 @@ RUN chown -R ${USERNAME}:${USERNAME} ${HOME_DIR}
 # Switch to the non-root user
 USER ${USERNAME}
 
+# Download and install Miniconda
+ENV CONDA_DIR=${HOME}/conda
+RUN wget --quiet \
+    https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    /bin/bash /tmp/miniconda.sh -b -p $CONDA_DIR && \
+    rm /tmp/miniconda.sh
+    
+# Add Conda binaries to PATH environment variable
+ENV PATH=$CONDA_DIR/bin:$PATH
+
+# Initialize Conda
+RUN conda init bash
+
+# Accept Anaconda license terms for main and r channels
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+# Create a new environment
+ENV PYTHON_VERSION=3.13
+
+RUN conda create -y -n py3 python=${PYTHON_VERSION}
+SHELL ["conda", "run", "-n", "py3", "/bin/bash", "-c"]
+RUN echo ". activate py3" >> ${HOME}/.bashrc
+RUN . ${HOME}/.bashrc && conda install -y jupyter
+
 # Clone the speed repo
 WORKDIR ${HOME}
 ENV SPEED_FOLDER=${HOME}/speed
@@ -50,4 +75,8 @@ RUN git clone https://bitbucket.org/ilmaz/speed-tutorials.git
 
 # Donwload the support scripts
 WORKDIR ${HOME}
-RUN git clone git@github.com:twinfall-repo/speed-repo.git
+RUN git clone https://github.com/twinfall-repo/speed-repo.git
+
+# Set the default command to start the conda environment
+WORKDIR ${HOME}
+CMD [ "/bin/bash", "-c", ". activate py3" ]
