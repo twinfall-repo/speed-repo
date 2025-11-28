@@ -13,10 +13,12 @@ from functions import plot_monitors
 
 
 if __name__ == "__main__":
-    # Resolve default monitors directory relative to this script
-    current_file = Path(__file__).resolve()
-    current_dir = current_file.parent
-    default_monitors = current_dir.joinpath("../speed_tests/MONITOR/")
+    # Folder of the test case relative to this script
+    folder = Path("PLANE_WAVE/1_TEST_SEM/MONITOR")
+
+    # Folder in home directory for tutorials
+    folder_speed = Path("/home/user/speed-tutorials")
 
     # Default parameters (previous script behavior)
-    plot_monitors(default_monitors, num_mon=4, t0=0.0, T=10.0)
+    path = folder_speed.joinpath(folder)
+    plot_monitors(path, num_mon=4, t0=0.0, T=10.0)
