@@ -53,7 +53,7 @@ ENV PYTHON_VERSION=3.13
 RUN conda create -y -n py3 python=${PYTHON_VERSION}
 SHELL ["conda", "run", "-n", "py3", "/bin/bash", "-c"]
 RUN echo ". activate py3" >> ${HOME}/.bashrc
-RUN . ${HOME}/.bashrc && conda install -y jupyter
+RUN . ${HOME}/.bashrc && conda install -y numpy matplotlib meshio
 
 # Clone the speed repo
 WORKDIR ${HOME}
