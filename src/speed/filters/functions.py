@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Sequence, Tuple, Union
 import os
 import numpy as np
+import meshio
 
 import matplotlib.pyplot as plt
 
@@ -160,6 +161,46 @@ def plot_monitors(
 
     # Show all figures
     plt.show()
+
+
+def mesh_to_vtu(filename, vtk_filename) -> None:
+    points = []
+    cells = {"hexahedron": [], "quad": []}
+
+    with open(filename, "r") as f:
+        lines = f.readlines()
+
+    # First line: header
+    header = lines[0].split()
+    num_nodes = int(header[0])
+
+    # Read nodes
+    for i in range(1, num_nodes + 1):
+        parts = lines[i].split()
+        # Ignore node ID (parts[0])
+        x, y, z = map(float, parts[1:4])
+        points.append([x, y, z])
+
+    # Read elements
+    for i in range(num_nodes + 1, len(lines)):
+        parts = lines[i].split()
+        if len(parts) < 4:
+            continue
+        elem_type = parts[2]
+        node_ids = [int(n) - 1 for n in parts[3:]]  # zero-based indexing
+        if elem_type == "hex":
+            cells["hexahedron"].append(node_ids)
+        elif elem_type == "quad":
+            cells["quad"].append(node_ids)
+
+    # Convert to Meshio format
+    cell_blocks = []
+    for key, value in cells.items():
+        if value:
+            cell_blocks.append((key, value))
+
+    mesh = meshio.Mesh(points=points, cells=cell_blocks)
+    meshio.write(vtk_filename, mesh)
 
 
 def padded_name(i: int, prefix: str = "monitor", ext: str = ".d") -> str:
