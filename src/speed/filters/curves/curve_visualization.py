@@ -325,4 +325,3 @@ def visualize_enlarged_curves(
     plt.show()
 
     return fig
-

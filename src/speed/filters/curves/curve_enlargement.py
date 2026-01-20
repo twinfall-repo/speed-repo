@@ -106,7 +106,9 @@ def enlarge_curve(
             return None
 
         if isinstance(buffered, Polygon):
-            enlarged_coords = np.array(buffered.exterior.coords[:-1])  # Exclude repeated last point
+            enlarged_coords = np.array(
+                buffered.exterior.coords[:-1]
+            )  # Exclude repeated last point
         elif isinstance(buffered, MultiLineString):
             # Multiple disconnected lines - take the largest one
             lines = list(buffered.geoms)
@@ -202,7 +204,9 @@ def offset_curve_safe(
         line = LineString(curve)
 
         # For line offset, parallel_offset is more appropriate than buffer
-        offset_line = line.parallel_offset(offset_distance, side=side, resolution=resolution)
+        offset_line = line.parallel_offset(
+            offset_distance, side=side, resolution=resolution
+        )
 
         if offset_line.is_empty:
             return None
@@ -224,3 +228,141 @@ def offset_curve_safe(
     except Exception as e:
         print(f"Warning: Failed to offset curve: {e}")
         return None
+
+
+def shrink_curve(
+    curve: np.ndarray, percentage: float, resolution: int = 10
+) -> Optional[np.ndarray]:
+    """
+    Shrink a closed curve inward by a given percentage while detecting self-intersections.
+
+    Args:
+        curve: Array of shape (n_points, 2) containing [x, y] coordinates
+               (should be a closed curve)
+        percentage: Shrinkage percentage (0-100). The curve is reduced by this percentage
+                   of its original area.
+        resolution: Number of segments for buffering (higher = smoother but slower)
+
+    Returns:
+        Shrunk curve as array of shape (n_points, 2), or None if self-intersection detected
+    """
+    if percentage <= 0:
+        return curve.copy()
+
+    if percentage >= 100:
+        return None  # Cannot shrink by 100% or more
+
+    if len(curve) < 3:
+        return curve.copy()
+
+    try:
+        # Create a polygon to get the interior
+        polygon = Polygon(curve)
+
+        if polygon.is_empty or not polygon.is_valid:
+            # Try to fix invalid polygon by simplifying
+            polygon = polygon.buffer(0)
+            if polygon.is_empty or not polygon.is_valid:
+                return None
+
+        original_area = polygon.area
+        if original_area <= 0:
+            return None
+
+        # Calculate inward offset distance
+        # For percentage-based shrinkage: new_area = original_area * (1 - percentage/100)
+        # new_radius = sqrt(new_area / π) = sqrt(original_area * (1 - percentage/100) / π)
+        # offset = new_radius - original_radius (negative value for inward offset)
+        
+        original_radius = np.sqrt(original_area / np.pi)
+        new_radius = original_radius * np.sqrt(1 - percentage / 100)
+        offset_dist = new_radius - original_radius  # This will be negative
+
+        # Ensure we don't shrink beyond the minimum
+        if offset_dist >= -original_radius * 0.95:
+            buffered = polygon.buffer(offset_dist, resolution=resolution)
+
+            if buffered.is_empty or not buffered.is_valid:
+                return None
+
+            if isinstance(buffered, Polygon):
+                shrunk_coords = np.array(buffered.exterior.coords[:-1])
+            elif isinstance(buffered, MultiLineString):
+                lines = list(buffered.geoms)
+                if not lines:
+                    return None
+                # Take the largest line by number of coords
+                largest = max(lines, key=lambda l: len(l.coords))
+                shrunk_coords = np.array(largest.coords[:-1])
+            elif isinstance(buffered, LineString):
+                shrunk_coords = np.array(buffered.coords)
+            else:
+                return None
+
+            return shrunk_coords
+        else:
+            return None
+
+    except Exception as e:
+        print(f"Warning: Failed to shrink curve: {e}")
+        return None
+
+
+def shrink_curves(
+    curves: List[np.ndarray],
+    percentage: float,
+    resolution: int = 10,
+    filter_invalid: bool = True,
+) -> List[np.ndarray]:
+    """
+    Shrink multiple closed curves by a given percentage while detecting self-intersections.
+
+    Args:
+        curves: List of curve arrays, each shape (n_points, 2)
+        percentage: Shrinkage percentage (0-100)
+        resolution: Number of segments for buffering
+        filter_invalid: If True, remove curves that fail to shrink or have self-intersections
+
+    Returns:
+        List of shrunk curve arrays. If filter_invalid is True, excludes failed curves.
+    """
+    if percentage <= 0:
+        return curves
+
+    if percentage >= 100:
+        return [] if filter_invalid else curves
+
+    shrunk_curves = []
+
+    for i, curve in enumerate(curves):
+        shrunk = shrink_curve(curve, percentage, resolution=resolution)
+
+        if shrunk is None:
+            if not filter_invalid:
+                shrunk_curves.append(curve)
+            print(f"  Curve {i}: Failed to shrink (self-intersection or too small?), skipped")
+        else:
+            shrunk_curves.append(shrunk)
+            # Calculate area change using Polygon
+            try:
+                orig_poly = Polygon(curve)
+                new_poly = Polygon(shrunk)
+                
+                if orig_poly.is_valid and new_poly.is_valid:
+                    original_area = abs(orig_poly.area)
+                    new_area = abs(new_poly.area)
+                    
+                    if original_area > 0:
+                        actual_percentage = ((original_area - new_area) / original_area) * 100
+                        print(
+                            f"  Curve {i}: Shrunk {len(curve)} → {len(shrunk)} points "
+                            f"({actual_percentage:.1f}% area reduction)"
+                        )
+                    else:
+                        print(f"  Curve {i}: Shrunk {len(curve)} → {len(shrunk)} points")
+                else:
+                    print(f"  Curve {i}: Shrunk {len(curve)} → {len(shrunk)} points")
+            except:
+                print(f"  Curve {i}: Shrunk {len(curve)} → {len(shrunk)} points")
+
+    return shrunk_curves

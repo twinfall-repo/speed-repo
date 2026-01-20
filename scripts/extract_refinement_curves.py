@@ -32,7 +32,7 @@ from curves.curve_export import (
     export_curves_pvd,
     export_curves_sat,
 )
-from curves.curve_enlargement import enlarge_curves
+from curves.curve_enlargement import enlarge_curves, shrink_curves
 from curves.curve_visualization import debug_visualization, visualize_enlarged_curves
 
 
@@ -64,6 +64,7 @@ def main() -> None:
     # z_scale = 1.0
     # simplify = False
     # enlarge_percentage = 0.0  # No enlargement
+    # shrink_percentage = 0.0   # No shrinking
 
     folder = Path(
         "/home/elle/Dropbox/Work/PresentazioniArticoli/progetti/cariplo/cubit_python/CubitPython4SPEED/Files/rialba"
@@ -73,7 +74,10 @@ def main() -> None:
     gradient_percentile = 90
     z_scale = 5.0
     simplify = True
-    enlarge_percentage = 0.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
+    enlarge_percentage = (
+        0.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
+    )
+    shrink_percentage = 0.0  # Shrinkage percentage (e.g., 10.0 for 10% area reduction)
 
     interp_factor = 2
 
@@ -126,13 +130,20 @@ def main() -> None:
     curves = close_curves_to_boundary(curves, x_fine, y_fine)
     print(f"   All curves closed")
 
-    # Enlarge curves if requested
+    # Enlarge or shrink curves if requested
     curves_export = curves
     if enlarge_percentage > 0:
         print(f"\n4c. Enlarging curves by {enlarge_percentage}%...")
-        curves_enlarged = enlarge_curves(curves, enlarge_percentage, resolution=10)
-        print(f"   Enlargement complete: {len(curves)} original → {len(curves_enlarged)} enlarged")
-        curves_export = curves_enlarged
+        curves_export = enlarge_curves(curves, enlarge_percentage, resolution=10)
+        print(
+            f"   Enlargement complete: {len(curves)} original → {len(curves_export)} enlarged"
+        )
+    elif shrink_percentage > 0:
+        print(f"\n4c. Shrinking curves by {shrink_percentage}%...")
+        curves_export = shrink_curves(curves, shrink_percentage, resolution=10)
+        print(
+            f"   Shrinking complete: {len(curves)} original → {len(curves_export)} shrunk"
+        )
 
     # Export curves
     print(f"\n5. Exporting curves...")
@@ -147,20 +158,45 @@ def main() -> None:
     export_curves_xyz(curves_export, x_fine, y_fine, z_fine, output_file_xyz)
     print(f"   XYZ saved to: {output_file_xyz}")
 
-    export_curves_vtk(curves_export, x_fine, y_fine, z_fine, output_file_vtk, z_scale=z_scale)
+    export_curves_vtk(
+        curves_export, x_fine, y_fine, z_fine, output_file_vtk, z_scale=z_scale
+    )
     print(f"   VTK saved to: {output_file_vtk} (z scaled by {z_scale})")
 
-    export_curves_pvd(curves_export, x_fine, y_fine, z_fine, output_file_pvd, z_scale=z_scale)
+    export_curves_pvd(
+        curves_export, x_fine, y_fine, z_fine, output_file_pvd, z_scale=z_scale
+    )
     print(f"   PVD saved to: {output_file_pvd}.pvd (z scaled by {z_scale})")
 
     # Visualize
     print(f"\n6. Generating visualization...")
     debug_visualization(x_fine, y_fine, z_fine, grad_mag, curves, threshold)
-    
-    # Visualize enlargement comparison if enlargement was applied
-    if enlarge_percentage > 0 and len(curves_enlarged) > 0:
+
+    # Visualize enlargement or shrinking comparison if applied
+    if enlarge_percentage > 0 and len(curves_export) > 0:
         print(f"\n6b. Generating enlargement comparison...")
-        visualize_enlarged_curves(x_fine, y_fine, z_fine, grad_mag, curves, curves_enlarged, threshold, enlarge_percentage)
+        visualize_enlarged_curves(
+            x_fine,
+            y_fine,
+            z_fine,
+            grad_mag,
+            curves,
+            curves_export,
+            threshold,
+            enlarge_percentage,
+        )
+    elif shrink_percentage > 0 and len(curves_export) > 0:
+        print(f"\n6b. Generating shrinkage comparison...")
+        visualize_enlarged_curves(
+            x_fine,
+            y_fine,
+            z_fine,
+            grad_mag,
+            curves,
+            curves_export,
+            threshold,
+            -shrink_percentage,
+        )
 
     print("\n" + "=" * 60)
     print("Done!")
