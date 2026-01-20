@@ -33,12 +33,10 @@ from curves.curve_export import (
     export_curves_sat,
 )
 from curves.curve_enlargement import enlarge_curves, shrink_curves
-from curves.curve_visualization import debug_visualization, visualize_enlarged_curves
+from curves.curve_visualization import debug_visualization, visualize_enlarged_curves, visualize_shrunk_curves
 
 
-def export_curve_version(
-    curves, x, y, z, folder, version_name, z_scale=1.0
-) -> None:
+def export_curve_version(curves, x, y, z, folder, version_name, z_scale=1.0) -> None:
     """
     Export curves to all formats in a versioned subdirectory.
 
@@ -56,21 +54,28 @@ def export_curve_version(
 
     # Export to all formats
     export_curves_sat(curves, x, y, z, version_dir / "refinement_curves_sat")
-    print(f"   {version_name.capitalize()}: SAT files → {version_dir / 'refinement_curves_sat'}")
+    print(
+        f"   {version_name.capitalize()}: SAT files → {version_dir / 'refinement_curves_sat'}"
+    )
 
     export_curves_xyz(curves, x, y, z, version_dir / "refinement_curves.xyz")
-    print(f"   {version_name.capitalize()}: XYZ file → {version_dir / 'refinement_curves.xyz'}")
+    print(
+        f"   {version_name.capitalize()}: XYZ file → {version_dir / 'refinement_curves.xyz'}"
+    )
 
     export_curves_vtk(
         curves, x, y, z, version_dir / "refinement_curves.vtk", z_scale=z_scale
     )
-    print(f"   {version_name.capitalize()}: VTK file → {version_dir / 'refinement_curves.vtk'}")
+    print(
+        f"   {version_name.capitalize()}: VTK file → {version_dir / 'refinement_curves.vtk'}"
+    )
 
     export_curves_pvd(
         curves, x, y, z, version_dir / "refinement_curves", z_scale=z_scale
     )
-    print(f"   {version_name.capitalize()}: PVD file → {version_dir / 'refinement_curves.pvd'}")
-
+    print(
+        f"   {version_name.capitalize()}: PVD file → {version_dir / 'refinement_curves.pvd'}"
+    )
 
 
 def main() -> None:
@@ -112,9 +117,9 @@ def main() -> None:
     z_scale = 5.0
     simplify = True
     enlarge_percentage = (
-        0.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
+        20.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
     )
-    shrink_percentage = 0.0  # Shrinkage percentage (e.g., 10.0 for 10% area reduction)
+    shrink_percentage = 20.0  # Shrinkage percentage (e.g., 10.0 for 10% area reduction)
 
     interp_factor = 2
 
@@ -184,15 +189,19 @@ def main() -> None:
 
     # Export curves
     print(f"\n5. Exporting curves...")
-    
+
     # Always export original curves
     export_curve_version(curves, x_fine, y_fine, z_fine, folder, "original", z_scale)
-    
+
     # Export modified version if enlargement or shrinking was applied
     if enlarge_percentage > 0:
-        export_curve_version(curves_export, x_fine, y_fine, z_fine, folder, "enlarged", z_scale)
+        export_curve_version(
+            curves_export, x_fine, y_fine, z_fine, folder, "enlarged", z_scale
+        )
     elif shrink_percentage > 0:
-        export_curve_version(curves_export, x_fine, y_fine, z_fine, folder, "shrunk", z_scale)
+        export_curve_version(
+            curves_export, x_fine, y_fine, z_fine, folder, "shrunk", z_scale
+        )
 
     # Visualize
     print(f"\n6. Generating visualization...")
@@ -213,7 +222,7 @@ def main() -> None:
         )
     elif shrink_percentage > 0 and len(curves_export) > 0:
         print(f"\n6b. Generating shrinkage comparison...")
-        visualize_enlarged_curves(
+        visualize_shrunk_curves(
             x_fine,
             y_fine,
             z_fine,
@@ -221,7 +230,7 @@ def main() -> None:
             curves,
             curves_export,
             threshold,
-            -shrink_percentage,
+            shrink_percentage,
         )
 
     print("\n" + "=" * 60)

@@ -325,3 +325,77 @@ def visualize_enlarged_curves(
     plt.show()
 
     return fig
+
+
+def visualize_shrunk_curves(
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    grad_mag: np.ndarray,
+    original_curves: List[np.ndarray],
+    shrunk_curves: List[np.ndarray],
+    threshold: float,
+    shrinkage_percentage: float,
+) -> plt.Figure:
+    """
+    Visualize comparison between original and shrunk refinement curves.
+
+    Creates a 2-panel figure showing: (1) Original curves in red, (2) Shrunk
+    curves in green. Useful for verifying shrinkage results before exporting
+    to Cubit.
+
+    Args:
+        x: 2D array of x-coordinates
+        y: 2D array of y-coordinates
+        z: 2D array of elevation values
+        grad_mag: 2D array of gradient magnitudes
+        original_curves: List of original curve arrays
+        shrunk_curves: List of shrunk curve arrays
+        threshold: Gradient threshold value used for contour extraction
+        shrinkage_percentage: Percentage by which curves were shrunk
+
+    Returns:
+        matplotlib Figure object (displayed interactively)
+    """
+    fig = plt.figure(figsize=(16, 7))
+
+    # Original curves
+    ax1 = fig.add_subplot(1, 2, 1)
+    im1 = ax1.imshow(
+        z,
+        extent=[x.min(), x.max(), y.min(), y.max()],
+        origin="lower",
+        cmap="terrain",
+        interpolation="bilinear",
+    )
+    for i, curve in enumerate(original_curves):
+        ax1.plot(curve[:, 0], curve[:, 1], "r-", linewidth=2, alpha=0.8)
+    plt.colorbar(im1, ax=ax1, label="Elevation (m)")
+    ax1.set_xlabel("X (m)")
+    ax1.set_ylabel("Y (m)")
+    ax1.set_title("Original Refinement Curves", fontsize=12, fontweight="bold")
+
+    # Shrunk curves
+    ax2 = fig.add_subplot(1, 2, 2)
+    im2 = ax2.imshow(
+        z,
+        extent=[x.min(), x.max(), y.min(), y.max()],
+        origin="lower",
+        cmap="terrain",
+        interpolation="bilinear",
+    )
+    for i, curve in enumerate(shrunk_curves):
+        ax2.plot(curve[:, 0], curve[:, 1], "g-", linewidth=2, alpha=0.8)
+    plt.colorbar(im2, ax=ax2, label="Elevation (m)")
+    ax2.set_xlabel("X (m)")
+    ax2.set_ylabel("Y (m)")
+    ax2.set_title(
+        f"Shrunk Refinement Curves (-{shrinkage_percentage:.1f}%)",
+        fontsize=12,
+        fontweight="bold",
+    )
+
+    plt.tight_layout()
+    plt.show()
+
+    return fig
