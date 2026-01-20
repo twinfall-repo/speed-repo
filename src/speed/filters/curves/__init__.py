@@ -11,6 +11,12 @@ from .curve_extraction import (
     smooth_curves,
 )
 from .curve_simplification import simplify_curves
+from .curve_enlargement import (
+    enlarge_curves,
+    enlarge_curve,
+    estimate_curve_area,
+    calculate_offset_distance,
+)
 from .curve_export import (
     export_curves_xyz,
     export_curves_vtk,
@@ -30,6 +36,11 @@ __all__ = [
     "smooth_curves",
     # Curve simplification
     "simplify_curves",
+    # Curve enlargement
+    "enlarge_curves",
+    "enlarge_curve",
+    "estimate_curve_area",
+    "calculate_offset_distance",
     # Export
     "export_curves_xyz",
     "export_curves_vtk",

@@ -251,3 +251,78 @@ def debug_visualization(
 
     # Return figure for potential saving
     return fig
+
+
+def visualize_enlarged_curves(
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    grad_mag: np.ndarray,
+    original_curves: List[np.ndarray],
+    enlarged_curves: List[np.ndarray],
+    threshold: float,
+    enlargement_percentage: float,
+) -> plt.Figure:
+    """
+    Visualize comparison between original and enlarged refinement curves.
+
+    Creates a 2-panel figure showing: (1) Original curves in red, (2) Enlarged
+    curves in blue. Useful for verifying enlargement results before exporting
+    to Cubit.
+
+    Args:
+        x: 2D array of x-coordinates
+        y: 2D array of y-coordinates
+        z: 2D array of elevation values
+        grad_mag: 2D array of gradient magnitudes
+        original_curves: List of original curve arrays
+        enlarged_curves: List of enlarged curve arrays
+        threshold: Gradient threshold value used for contour extraction
+        enlargement_percentage: Percentage by which curves were enlarged
+
+    Returns:
+        matplotlib Figure object (displayed interactively)
+    """
+    fig = plt.figure(figsize=(16, 7))
+
+    # Original curves
+    ax1 = fig.add_subplot(1, 2, 1)
+    im1 = ax1.imshow(
+        z,
+        extent=[x.min(), x.max(), y.min(), y.max()],
+        origin="lower",
+        cmap="terrain",
+        interpolation="bilinear",
+    )
+    for i, curve in enumerate(original_curves):
+        ax1.plot(curve[:, 0], curve[:, 1], "r-", linewidth=2, alpha=0.8)
+    plt.colorbar(im1, ax=ax1, label="Elevation (m)")
+    ax1.set_xlabel("X (m)")
+    ax1.set_ylabel("Y (m)")
+    ax1.set_title("Original Refinement Curves", fontsize=12, fontweight="bold")
+
+    # Enlarged curves
+    ax2 = fig.add_subplot(1, 2, 2)
+    im2 = ax2.imshow(
+        z,
+        extent=[x.min(), x.max(), y.min(), y.max()],
+        origin="lower",
+        cmap="terrain",
+        interpolation="bilinear",
+    )
+    for i, curve in enumerate(enlarged_curves):
+        ax2.plot(curve[:, 0], curve[:, 1], "b-", linewidth=2, alpha=0.8)
+    plt.colorbar(im2, ax=ax2, label="Elevation (m)")
+    ax2.set_xlabel("X (m)")
+    ax2.set_ylabel("Y (m)")
+    ax2.set_title(
+        f"Enlarged Refinement Curves (+{enlargement_percentage:.1f}%)",
+        fontsize=12,
+        fontweight="bold",
+    )
+
+    plt.tight_layout()
+    plt.show()
+
+    return fig
+
