@@ -150,6 +150,13 @@ def enlarge_curves(
     enlarged_curves = []
 
     for i, curve in enumerate(curves):
+        # Check if curve is closed
+        if not np.allclose(curve[0], curve[-1]):
+            print(f"  Curve {i}: Not closed, skipped")
+            if not filter_invalid:
+                enlarged_curves.append(curve)
+            continue
+
         enlarged = enlarge_curve(curve, percentage, resolution=resolution)
 
         if enlarged is None:
@@ -273,7 +280,7 @@ def shrink_curve(
         # For percentage-based shrinkage: new_area = original_area * (1 - percentage/100)
         # new_radius = sqrt(new_area / π) = sqrt(original_area * (1 - percentage/100) / π)
         # offset = new_radius - original_radius (negative value for inward offset)
-        
+
         original_radius = np.sqrt(original_area / np.pi)
         new_radius = original_radius * np.sqrt(1 - percentage / 100)
         offset_dist = new_radius - original_radius  # This will be negative
@@ -335,31 +342,44 @@ def shrink_curves(
     shrunk_curves = []
 
     for i, curve in enumerate(curves):
+        # Check if curve is closed
+        if not np.allclose(curve[0], curve[-1]):
+            print(f"  Curve {i}: Not closed, skipped")
+            if not filter_invalid:
+                shrunk_curves.append(curve)
+            continue
+
         shrunk = shrink_curve(curve, percentage, resolution=resolution)
 
         if shrunk is None:
             if not filter_invalid:
                 shrunk_curves.append(curve)
-            print(f"  Curve {i}: Failed to shrink (self-intersection or too small?), skipped")
+            print(
+                f"  Curve {i}: Failed to shrink (self-intersection or too small?), skipped"
+            )
         else:
             shrunk_curves.append(shrunk)
             # Calculate area change using Polygon
             try:
                 orig_poly = Polygon(curve)
                 new_poly = Polygon(shrunk)
-                
+
                 if orig_poly.is_valid and new_poly.is_valid:
                     original_area = abs(orig_poly.area)
                     new_area = abs(new_poly.area)
-                    
+
                     if original_area > 0:
-                        actual_percentage = ((original_area - new_area) / original_area) * 100
+                        actual_percentage = (
+                            (original_area - new_area) / original_area
+                        ) * 100
                         print(
                             f"  Curve {i}: Shrunk {len(curve)} → {len(shrunk)} points "
                             f"({actual_percentage:.1f}% area reduction)"
                         )
                     else:
-                        print(f"  Curve {i}: Shrunk {len(curve)} → {len(shrunk)} points")
+                        print(
+                            f"  Curve {i}: Shrunk {len(curve)} → {len(shrunk)} points"
+                        )
                 else:
                     print(f"  Curve {i}: Shrunk {len(curve)} → {len(shrunk)} points")
             except:
