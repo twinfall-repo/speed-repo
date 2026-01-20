@@ -33,7 +33,11 @@ from curves.curve_export import (
     export_curves_sat,
 )
 from curves.curve_enlargement import enlarge_curves, shrink_curves
-from curves.curve_visualization import debug_visualization, visualize_enlarged_curves, visualize_shrunk_curves
+from curves.curve_visualization import (
+    debug_visualization,
+    visualize_enlarged_curves,
+    visualize_shrunk_curves,
+)
 
 
 def export_curve_version(curves, x, y, z, folder, version_name, z_scale=1.0) -> None:
@@ -116,9 +120,7 @@ def main() -> None:
     gradient_percentile = 90
     z_scale = 5.0
     simplify = True
-    enlarge_percentage = (
-        20.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
-    )
+    enlarge_percentage = 0.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
     shrink_percentage = 20.0  # Shrinkage percentage (e.g., 10.0 for 10% area reduction)
 
     interp_factor = 2
