@@ -36,6 +36,43 @@ from curves.curve_enlargement import enlarge_curves, shrink_curves
 from curves.curve_visualization import debug_visualization, visualize_enlarged_curves
 
 
+def export_curve_version(
+    curves, x, y, z, folder, version_name, z_scale=1.0
+) -> None:
+    """
+    Export curves to all formats in a versioned subdirectory.
+
+    Args:
+        curves: List of curve arrays to export
+        x: 2D array of x-coordinates
+        y: 2D array of y-coordinates
+        z: 2D array of elevation values
+        folder: Base output folder
+        version_name: Name of the version (e.g., 'original', 'enlarged', 'shrunk')
+        z_scale: Z scaling factor for VTK/PVD export
+    """
+    version_dir = folder / f"refinement_curves_{version_name}"
+    version_dir.mkdir(parents=True, exist_ok=True)
+
+    # Export to all formats
+    export_curves_sat(curves, x, y, z, version_dir / "refinement_curves_sat")
+    print(f"   {version_name.capitalize()}: SAT files → {version_dir / 'refinement_curves_sat'}")
+
+    export_curves_xyz(curves, x, y, z, version_dir / "refinement_curves.xyz")
+    print(f"   {version_name.capitalize()}: XYZ file → {version_dir / 'refinement_curves.xyz'}")
+
+    export_curves_vtk(
+        curves, x, y, z, version_dir / "refinement_curves.vtk", z_scale=z_scale
+    )
+    print(f"   {version_name.capitalize()}: VTK file → {version_dir / 'refinement_curves.vtk'}")
+
+    export_curves_pvd(
+        curves, x, y, z, version_dir / "refinement_curves", z_scale=z_scale
+    )
+    print(f"   {version_name.capitalize()}: PVD file → {version_dir / 'refinement_curves.pvd'}")
+
+
+
 def main() -> None:
     """
     Main processing pipeline for DEM refinement curve extraction.
@@ -147,26 +184,15 @@ def main() -> None:
 
     # Export curves
     print(f"\n5. Exporting curves...")
-    output_file_xyz = folder / "refinement_curves.xyz"
-    output_file_vtk = folder / "refinement_curves.vtk"
-    output_file_pvd = folder / "refinement_curves"
-    output_dir_sat = folder / "refinement_curves_sat"
-
-    export_curves_sat(curves_export, x_fine, y_fine, z_fine, output_dir_sat)
-    print(f"   SAT files saved to: {output_dir_sat}")
-
-    export_curves_xyz(curves_export, x_fine, y_fine, z_fine, output_file_xyz)
-    print(f"   XYZ saved to: {output_file_xyz}")
-
-    export_curves_vtk(
-        curves_export, x_fine, y_fine, z_fine, output_file_vtk, z_scale=z_scale
-    )
-    print(f"   VTK saved to: {output_file_vtk} (z scaled by {z_scale})")
-
-    export_curves_pvd(
-        curves_export, x_fine, y_fine, z_fine, output_file_pvd, z_scale=z_scale
-    )
-    print(f"   PVD saved to: {output_file_pvd}.pvd (z scaled by {z_scale})")
+    
+    # Always export original curves
+    export_curve_version(curves, x_fine, y_fine, z_fine, folder, "original", z_scale)
+    
+    # Export modified version if enlargement or shrinking was applied
+    if enlarge_percentage > 0:
+        export_curve_version(curves_export, x_fine, y_fine, z_fine, folder, "enlarged", z_scale)
+    elif shrink_percentage > 0:
+        export_curve_version(curves_export, x_fine, y_fine, z_fine, folder, "shrunk", z_scale)
 
     # Visualize
     print(f"\n6. Generating visualization...")
