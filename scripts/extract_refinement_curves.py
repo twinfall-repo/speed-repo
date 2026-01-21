@@ -20,6 +20,7 @@ Usage:
 
 import sys
 from pathlib import Path
+import numpy as np
 
 # Add src to path to import speed modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "speed" / "filters"))
@@ -38,6 +39,84 @@ from curves.curve_visualization import (
     visualize_enlarged_curves,
     visualize_shrunk_curves,
 )
+
+
+def validate_curves_closed(curves, tolerance=1e-6):
+    """
+    Validate if all curves are closed (first and last points match).
+
+    Args:
+        curves: List of curve arrays to validate
+        tolerance: Distance threshold for considering points as matching (default: 1e-6)
+
+    Returns:
+        tuple: (all_closed, validation_results)
+            - all_closed (bool): True if all curves are closed
+            - validation_results (list): List of dicts with per-curve validation info
+    """
+    validation_results = []
+    all_closed = True
+
+    for i, curve in enumerate(curves):
+        if len(curve) < 2:
+            validation_results.append(
+                {
+                    "curve_id": i,
+                    "is_closed": False,
+                    "distance": None,
+                    "num_points": len(curve),
+                    "reason": "Too few points (< 2)",
+                }
+            )
+            all_closed = False
+            continue
+
+        # Calculate distance between first and last point
+        first_point = curve[0]
+        last_point = curve[-1]
+        distance = np.linalg.norm(last_point - first_point)
+        is_closed = distance <= tolerance
+
+        validation_results.append(
+            {
+                "curve_id": i,
+                "is_closed": is_closed,
+                "distance": distance,
+                "num_points": len(curve),
+                "first_point": first_point,
+                "last_point": last_point,
+            }
+        )
+
+        if not is_closed:
+            all_closed = False
+
+    return all_closed, validation_results
+
+
+def print_curve_validation(validation_results, label="Curves"):
+    """
+    Print a formatted report of curve validation results.
+
+    Args:
+        validation_results: List of validation result dicts from validate_curves_closed
+        label: Label to use in the report header
+    """
+    print(f"\n   {label} Validation:")
+    for result in validation_results:
+        curve_id = result["curve_id"]
+        is_closed = result["is_closed"]
+        distance = result["distance"]
+        num_points = result["num_points"]
+
+        status = "✓ CLOSED" if is_closed else "✗ OPEN"
+
+        if "reason" in result:
+            print(f"     Curve {curve_id}: {status} - {result['reason']}")
+        else:
+            print(
+                f"     Curve {curve_id}: {status} (gap: {distance:.2e}, {num_points} points)"
+            )
 
 
 def export_curve_version(curves, x, y, z, folder, version_name, z_scale=1.0) -> None:
@@ -120,8 +199,12 @@ def main() -> None:
     gradient_percentile = 90
     z_scale = 5.0
     simplify = True
-    enlarge_percentage = 0.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
-    shrink_percentage = 20.0  # Shrinkage percentage (e.g., 10.0 for 10% area reduction)
+    enlarge_percentage = (
+        30.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
+    )
+    shrink_percentage = (
+        0 * 17.5
+    )  # Shrinkage percentage (e.g., 10.0 for 10% area reduction)
 
     interp_factor = 2
 
@@ -174,6 +257,14 @@ def main() -> None:
     curves = close_curves_to_boundary(curves, x_fine, y_fine)
     print(f"   All curves closed")
 
+    # Validate that curves are actually closed
+    all_closed, validation_results = validate_curves_closed(curves, tolerance=1e-6)
+    print_curve_validation(validation_results, label="Original")
+    if not all_closed:
+        print("   ⚠ WARNING: Some curves are not properly closed!")
+    else:
+        print("   ✓ All curves are properly closed")
+
     # Enlarge or shrink curves if requested
     curves_export = curves
     if enlarge_percentage > 0:
@@ -182,12 +273,33 @@ def main() -> None:
         print(
             f"   Enlargement complete: {len(curves)} original → {len(curves_export)} enlarged"
         )
+
+        # Validate enlarged curves
+        all_closed_enlarged, validation_enlarged = validate_curves_closed(
+            curves_export, tolerance=1e-6
+        )
+        print_curve_validation(validation_enlarged, label="Enlarged")
+        if not all_closed_enlarged:
+            print("   ⚠ WARNING: Some enlarged curves are not properly closed!")
+        else:
+            print("   ✓ All enlarged curves are properly closed")
+
     elif shrink_percentage > 0:
         print(f"\n4c. Shrinking curves by {shrink_percentage}%...")
         curves_export = shrink_curves(curves, shrink_percentage, resolution=10)
         print(
             f"   Shrinking complete: {len(curves)} original → {len(curves_export)} shrunk"
         )
+
+        # Validate shrunk curves
+        all_closed_shrunk, validation_shrunk = validate_curves_closed(
+            curves_export, tolerance=1e-6
+        )
+        print_curve_validation(validation_shrunk, label="Shrunk")
+        if not all_closed_shrunk:
+            print("   ⚠ WARNING: Some shrunk curves are not properly closed!")
+        else:
+            print("   ✓ All shrunk curves are properly closed")
 
     # Export curves
     print(f"\n5. Exporting curves...")

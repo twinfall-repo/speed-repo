@@ -119,6 +119,10 @@ def enlarge_curve(
         else:
             return None
 
+        # Ensure the curve is closed by appending the first point
+        if not np.allclose(enlarged_coords[0], enlarged_coords[-1]):
+            enlarged_coords = np.vstack([enlarged_coords, enlarged_coords[0]])
+
         return enlarged_coords
 
     except Exception as e:
@@ -305,6 +309,10 @@ def shrink_curve(
                 shrunk_coords = np.array(buffered.coords)
             else:
                 return None
+
+            # Ensure the curve is closed by appending the first point
+            if not np.allclose(shrunk_coords[0], shrunk_coords[-1]):
+                shrunk_coords = np.vstack([shrunk_coords, shrunk_coords[0]])
 
             return shrunk_coords
         else:

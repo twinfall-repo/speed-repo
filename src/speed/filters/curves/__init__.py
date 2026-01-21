@@ -25,7 +25,12 @@ from .curve_export import (
     export_curves_pvd,
     export_curves_sat,
 )
-from .curve_visualization import visualize_results, debug_visualization, visualize_enlarged_curves, visualize_shrunk_curves
+from .curve_visualization import (
+    visualize_results,
+    debug_visualization,
+    visualize_enlarged_curves,
+    visualize_shrunk_curves,
+)
 
 __all__ = [
     # DEM processing
