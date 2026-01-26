@@ -94,14 +94,14 @@ def scale_mesh_z(mesh: meshio.Mesh, z_factor: float) -> meshio.Mesh:
 
 
 def write_mesh_to_vtu(
-    mesh: meshio.Mesh, vtk_filename: Union[str, Path], binary: bool = False
+    mesh: meshio.Mesh, vtk_filename: Union[str, Path], binary: bool = True
 ) -> None:
     """Write a meshio.Mesh object to a VTU file.
 
     Args:
         mesh: meshio.Mesh object to write.
         vtk_filename: Path to output VTU file.
-        binary: Whether to write in binary format (default: False).
+        binary: Whether to write in binary format (default: True).
     """
     print(f"Writing mesh to VTU file: {vtk_filename}")
     meshio.write(str(vtk_filename), mesh, binary=binary)
