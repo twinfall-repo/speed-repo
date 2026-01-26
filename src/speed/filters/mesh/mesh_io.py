@@ -126,41 +126,74 @@ def mesh_to_vtu(
 def write_mesh(mesh: meshio.Mesh, filename: Union[str, Path]) -> None:
     """Write a meshio.Mesh object to a native mesh file format.
 
-    Writes in the same format as Meshfile.mesh:
-    - First line: number of nodes
+    Writes in the same format as Meshfile.mesh (Cubit format):
+    - First line: number_of_points number_of_elements 0 0 0
     - Node lines: node_id x y z
-    - Element lines: element_id placeholder elem_type node_id1 node_id2 ...
+    - Element lines: element_id tag elem_type node_id1 node_id2 ...
+
+    Quads are written before hexahedra. Tags are read from mesh.cell_data["tag"].
 
     Args:
         mesh: meshio.Mesh object to write.
         filename: Path to output mesh file.
     """
+    # Count total elements
+    total_elements = sum(len(cell_block.data) for cell_block in mesh.cells)
+
     with open(filename, "w") as f:
-        # Write header (number of nodes)
-        f.write(f"{len(mesh.points)}\n")
+        # Write header (number of points, number of elements, and three zeros)
+        f.write(f"{len(mesh.points)} {total_elements} 0 0 0\n")
 
         # Write nodes (1-based indexing)
         for i, point in enumerate(mesh.points):
             node_id = i + 1
             f.write(f"{node_id} {point[0]:.16e} {point[1]:.16e} {point[2]:.16e}\n")
 
-        # Write elements
-        elem_id = 1
-        for cell_block in mesh.cells:
-            cell_type = cell_block.type
-            cell_data = cell_block.data
+        # Write elements: quads first, then hexahedra
+        quad_id = 1
 
-            # Determine element type string
-            if cell_type == "hexahedron":
-                elem_type = "hex"
-            elif cell_type == "quad":
-                elem_type = "quad"
-            else:
-                elem_type = cell_type
+        # Get tag data if available
+        tag_data = mesh.cell_data.get("tag", []) if mesh.cell_data else []
+
+        # Write quads first
+        for block_idx, cell_block in enumerate(mesh.cells):
+            if cell_block.type != "quad":
+                continue
+
+            cell_data = cell_block.data
+            elem_type = "quad"
+
+            # Get tags for this block
+            block_tags = tag_data[block_idx] if block_idx < len(tag_data) else None
 
             # Write each element
-            for connectivity in cell_data:
+            for elem_idx, connectivity in enumerate(cell_data):
+                # Get tag value for this element
+                tag_value = block_tags[elem_idx] if block_tags is not None else 0
+
                 # Convert from 0-based to 1-based indexing
                 node_ids = [str(n + 1) for n in connectivity]
-                f.write(f"{elem_id} 0 {elem_type} {' '.join(node_ids)}\n")
-                elem_id += 1
+                f.write(f"{quad_id} {tag_value} {elem_type} {' '.join(node_ids)}\n")
+                quad_id += 1
+
+        # Write hexahedra
+        hex_id = 1
+        for block_idx, cell_block in enumerate(mesh.cells):
+            if cell_block.type != "hexahedron":
+                continue
+
+            cell_data = cell_block.data
+            elem_type = "hex"
+
+            # Get tags for this block
+            block_tags = tag_data[block_idx] if block_idx < len(tag_data) else None
+
+            # Write each element
+            for elem_idx, connectivity in enumerate(cell_data):
+                # Get tag value for this element
+                tag_value = block_tags[elem_idx] if block_tags is not None else 0
+
+                # Convert from 0-based to 1-based indexing
+                node_ids = [str(n + 1) for n in connectivity]
+                f.write(f"{hex_id} {tag_value} {elem_type} {' '.join(node_ids)}\n")
+                hex_id += 1

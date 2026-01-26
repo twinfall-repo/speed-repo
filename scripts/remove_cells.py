@@ -7,7 +7,7 @@ import numpy as np
 # Add src to path to import speed modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "speed" / "filters"))
 
-from mesh.mesh_io import read_mesh, write_mesh_to_vtu, read_stl_mesh
+from mesh.mesh_io import read_mesh, write_mesh_to_vtu, read_stl_mesh, write_mesh
 from mesh.mesh_operations import (
     initialize_dimension_field,
     mark_intersecting_hexahedra,
@@ -68,6 +68,9 @@ def main() -> None:
 
     # Export the STL surface for reference
     write_mesh_to_vtu(stl_mesh, folder / Path("vertical_plane.vtu"))
+
+    # Export mesh to Cubit format
+    write_mesh(mesh, folder / Path("output_quads_cubit.mesh"))
 
 
 if __name__ == "__main__":
