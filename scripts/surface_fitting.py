@@ -20,7 +20,7 @@ from speed.filters.mesh.surface_fitting import (
     load_points,
     fit_surface,
     extract_intersection_curves,
-    export_surface_vtk,
+    export_surface_mesh_vtk,
 )
 from speed.filters.curves.profile_generation import (
     create_depth_profiles,
@@ -68,7 +68,8 @@ def main():
 
     # Fit surface using Delaunay triangulation
     print("\nFitting surface with Delaunay triangulation...")
-    zi_grid, xi_grid, yi_grid, spl = fit_surface(points, grid_size=150)
+    pts_mesh, triangles, interpolator = fit_surface(points)
+    print(f"Created mesh with {len(pts_mesh)} points and {len(triangles)} triangles")
 
     # Export surface to VTK
     print("\n" + "=" * 60)
@@ -80,7 +81,7 @@ def main():
     surface_vtk = surface_dir / "fitted_surface.vtk"
 
     print(f"\nExporting surface to VTK...")
-    export_surface_vtk(xi_grid, yi_grid, zi_grid, surface_vtk)
+    export_surface_mesh_vtk(pts_mesh, triangles, surface_vtk)
     print(f"Surface saved to: {surface_vtk}")
 
     # Define parallel planes
@@ -89,7 +90,7 @@ def main():
     print("=" * 60)
 
     normal = [1, 0, 0]  # X-direction (vertical planes)
-    x_min, x_max = xi_grid.min(), xi_grid.max()
+    x_min, x_max = pts_mesh[:, 0].min(), pts_mesh[:, 0].max()
     plane_step = (x_max - x_min) / 20  # 20 equally-spaced intervals
 
     plane_values = np.arange(x_min, x_max + plane_step / 2, plane_step)
@@ -101,7 +102,7 @@ def main():
 
     # Extract intersections using piecewise linear interpolation
     print("Extracting intersection curves by sampling surface...")
-    intersections = extract_intersection_curves(yi_grid, plane_values, spl)
+    intersections = extract_intersection_curves(pts_mesh, interpolator, plane_values, num_samples=200)
     print(f"Found {len(intersections)} intersection curves")
 
     # Create depth profiles for meshing
@@ -109,7 +110,7 @@ def main():
     print("DEPTH PROFILES")
     print("=" * 60)
 
-    depth = (zi_grid.max() - zi_grid.min()) / 2  # Use half the Z-range as depth
+    depth = (pts_mesh[:, 2].max() - pts_mesh[:, 2].min()) / 2  # Use half the Z-range as depth
     print(f"\nCreating depth profiles with depth = {depth:.2f}")
 
     profiles = create_depth_profiles(intersections, normal, plane_values, depth=depth)
@@ -135,8 +136,8 @@ def main():
 
     mesh_dir = script_dir / "profile_meshes"
     # Choose a reasonable default mesh size based on overall surface extent
-    x_extent = xi_grid.max() - xi_grid.min()
-    y_extent = yi_grid.max() - yi_grid.min()
+    x_extent = pts_mesh[:, 0].max() - pts_mesh[:, 0].min()
+    y_extent = pts_mesh[:, 1].max() - pts_mesh[:, 1].min()
     mesh_size = (
         max(x_extent, y_extent) / 100.0 if (x_extent > 0 and y_extent > 0) else 1.0
     )

@@ -22,6 +22,7 @@ def read_mesh(filename: Union[str, Path]) -> meshio.Mesh:
     """
     points = []
     cells = {"hexahedron": [], "quad": []}
+    cells_data = {"hexahedron": [], "quad": []}
 
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -44,10 +45,13 @@ def read_mesh(filename: Union[str, Path]) -> meshio.Mesh:
             continue
         elem_type = parts[2]
         node_ids = [int(n) - 1 for n in parts[3:]]  # zero-based indexing
+        cell_tag = int(parts[1])
         if elem_type == "hex":
             cells["hexahedron"].append(node_ids)
+            cells_data["hexahedron"].append(cell_tag)
         elif elem_type == "quad":
             cells["quad"].append(node_ids)
+            cells_data["quad"].append(cell_tag)
 
     # Convert to Meshio format
     cell_blocks = []
@@ -55,7 +59,23 @@ def read_mesh(filename: Union[str, Path]) -> meshio.Mesh:
         if value:
             cell_blocks.append((key, value))
 
-    return meshio.Mesh(points=points, cells=cell_blocks)
+    cell_data_blocks = {"tag": []}
+    for key, value in cells_data.items():
+        if value:
+            cell_data_blocks["tag"].append(value)
+
+    return meshio.Mesh(points=points, cells=cell_blocks, cell_data=cell_data_blocks)
+
+
+def read_stl_mesh(filename: Union[str, Path]) -> meshio.Mesh:
+    """Read a mesh from an STL file.
+
+    Args:
+        filename: Path to STL file.
+    Returns:
+        meshio.Mesh object.
+    """
+    return meshio.read(filename)
 
 
 def scale_mesh_z(mesh: meshio.Mesh, z_factor: float) -> meshio.Mesh:
@@ -70,17 +90,21 @@ def scale_mesh_z(mesh: meshio.Mesh, z_factor: float) -> meshio.Mesh:
     """
     scaled_points = mesh.points.copy()
     scaled_points[:, 2] *= z_factor
-    return meshio.Mesh(points=scaled_points, cells=mesh.cells)
+    return meshio.Mesh(points=scaled_points, cells=mesh.cells, cell_data=mesh.cell_data)
 
 
-def write_mesh_to_vtu(mesh: meshio.Mesh, vtk_filename: Union[str, Path]) -> None:
+def write_mesh_to_vtu(
+    mesh: meshio.Mesh, vtk_filename: Union[str, Path], binary: bool = False
+) -> None:
     """Write a meshio.Mesh object to a VTU file.
 
     Args:
         mesh: meshio.Mesh object to write.
         vtk_filename: Path to output VTU file.
+        binary: Whether to write in binary format (default: False).
     """
-    meshio.write(vtk_filename, mesh)
+    print(f"Writing mesh to VTU file: {vtk_filename}")
+    meshio.write(str(vtk_filename), mesh, binary=binary)
 
 
 def mesh_to_vtu(

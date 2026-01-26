@@ -11,6 +11,14 @@ from .mesh_io import (
     mesh_to_vtu,
     write_mesh,
 )
+from .mesh_operations import (
+    initialize_dimension_field,
+    mark_intersecting_hexahedra,
+    mark_intersecting_quads,
+    remove_3d_cells,
+    remove_2d_cells,
+    remove_cell_type_from_mesh,
+)
 
 __all__ = [
     "read_mesh",
@@ -18,4 +26,9 @@ __all__ = [
     "write_mesh_to_vtu",
     "mesh_to_vtu",
     "write_mesh",
+    "mark_intersecting_hexahedra",
+    "mark_intersecting_quads",
+    "remove_3d_cells",
+    "remove_2d_cells",
+    "remove_cell_type_from_mesh",
 ]

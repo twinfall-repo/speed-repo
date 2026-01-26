@@ -127,7 +127,7 @@ def generate_mesh_from_profile(profile, profile_id, output_dir, mesh_size=1.0):
             triangles = np.array(connectivity, dtype=int).reshape(-1, 3)
 
     # Create node coordinates array
-    nodes = node_coords.reshape(-1, 3)[:, :2]  # Take only x, y
+    nodes = node_coords.reshape(-1, 3)
 
     # Create mapping from gmsh node tags to indices
     node_map = {tag: i for i, tag in enumerate(node_tags)}
@@ -146,7 +146,7 @@ def generate_mesh_from_profile(profile, profile_id, output_dir, mesh_size=1.0):
 
     # Export node coordinates
     nodes_file = output_dir / f"profile_{profile_id:03d}_nodes.txt"
-    np.savetxt(nodes_file, nodes, fmt="%.6f", header="x y", comments="")
+    np.savetxt(nodes_file, nodes, fmt="%.6f", header="x y z", comments="")
 
     # Export triangles (node IDs, 1-based for compatibility)
     triangles_file = output_dir / f"profile_{profile_id:03d}_triangles.txt"

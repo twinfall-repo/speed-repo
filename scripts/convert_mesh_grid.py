@@ -30,7 +30,7 @@ def main() -> None:
     file_name = Path("Meshfile.mesh")
     vtk_file_name = Path("output.vtu")
     mesh_file_name = Path("output_scaled.mesh")
-    z_factor = 5.0  # Scale z coordinates by this factor
+    z_factor = 1.0  # 5 # Scale z coordinates by this factor
 
     # Output directory - current script location
     folder_out = Path(__file__).parent
