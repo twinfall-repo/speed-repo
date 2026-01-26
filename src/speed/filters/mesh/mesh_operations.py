@@ -7,13 +7,28 @@ Functions include:
 """
 
 import copy
+from typing import Any
+
 import numpy as np
 import trimesh
-from meshio import CellBlock
+import meshio
 
 
-def initialize_dimension_field(mesh):
-    """Initialize a "dim" field in cell_data marking the topological dimension of each cell."""
+def initialize_dimension_field(mesh: meshio.Mesh) -> None:
+    """Initialize a "dim" field in cell_data marking the topological dimension of each cell.
+
+    Adds a "dim" field to the mesh's cell_data dictionary that assigns a topological
+    dimension value to each cell based on its type. Hexahedral elements are marked
+    as dimension 3 (3D), while quadrilateral and other elements are marked as
+    dimension 2 (2D).
+
+    Args:
+        mesh: The meshio Mesh object to process. The mesh's cell_data will be
+            modified in-place.
+
+    Returns:
+        None. Modifies the mesh object in-place.
+    """
 
     if mesh.cell_data is None:
         mesh.cell_data = {}
@@ -32,10 +47,26 @@ def initialize_dimension_field(mesh):
     print("Initialized 'dim' field in cell_data")
 
 
-def mark_intersecting_hexahedra(mesh, stl_mesh, tag="intersection", surface_tol=1e-4):
+def mark_intersecting_hexahedra(
+    mesh: meshio.Mesh, stl_mesh: meshio.Mesh, tag: str = "intersection"
+) -> None:
     """Mark hexahedral elements that intersect with the STL mesh.
 
-    Uses ray-casting to check if any of the 12 actual hex edges intersect the surface.
+    Uses ray-casting to check if any of the 12 actual hex edges intersect the
+    surface defined by the STL mesh. Elements are marked with a flag value of 1 if
+    they intersect, 0 otherwise. Also checks if any vertex of the hexahedron is
+    inside the STL volume.
+
+    Args:
+        mesh: The meshio Mesh object containing hexahedral elements to check.
+        stl_mesh: The meshio Mesh object representing the STL surface (must contain
+            triangle elements).
+        tag: The name of the cell_data field to store intersection flags.
+            Defaults to "intersection".
+
+    Returns:
+        None. Modifies the mesh object in-place by adding/updating the tag field
+        in cell_data.
     """
     stl_triangles = stl_mesh.cells_dict.get("triangle", [])
     if len(stl_triangles) == 0:
@@ -115,10 +146,26 @@ def mark_intersecting_hexahedra(mesh, stl_mesh, tag="intersection", surface_tol=
         print(f"Marked {marked}/{num_cells} hexahedron elements as '{tag}'")
 
 
-def mark_intersecting_quads(mesh, stl_mesh, tag="intersection", surface_tol=1e-4):
+def mark_intersecting_quads(
+    mesh: meshio.Mesh, stl_mesh: meshio.Mesh, tag: str = "intersection"
+) -> None:
     """Mark quadrilateral elements that intersect with the STL mesh.
 
-    Uses ray-casting to check if quad edges or diagonals intersect the surface.
+    Uses ray-casting to check if any of the 4 edges or 2 diagonals of a quadrilateral
+    intersect the surface defined by the STL mesh. Elements are marked with a flag
+    value of 1 if they intersect, 0 otherwise. Also checks if any vertex of the
+    quadrilateral is inside the STL volume.
+
+    Args:
+        mesh: The meshio Mesh object containing quadrilateral elements to check.
+        stl_mesh: The meshio Mesh object representing the STL surface (must contain
+            triangle elements).
+        tag: The name of the cell_data field to store intersection flags.
+            Defaults to "intersection".
+
+    Returns:
+        None. Modifies the mesh object in-place by adding/updating the tag field
+        in cell_data.
     """
     stl_triangles = stl_mesh.cells_dict.get("triangle", [])
     if len(stl_triangles) == 0:
@@ -192,15 +239,39 @@ def mark_intersecting_quads(mesh, stl_mesh, tag="intersection", surface_tol=1e-4
         print(f"Marked {marked}/{num_cells} quad elements as '{tag}'")
 
 
-def remove_3d_cells(mesh, tag="intersection", new_quad_value=1):
-    """Remove 3D hexahedral cells marked with tag=1 and add their faces as quads."""
+def remove_3d_cells(
+    mesh: meshio.Mesh,
+    tag: str = "intersection",
+    new_quad_tag: str = "tag",
+    new_quad_value: int = 1,
+) -> None:
+    """Remove 3D hexahedral cells marked with tag=1 and add their faces as quads.
+
+    Removes all hexahedral elements that are marked as intersecting (tag flag = 1).
+    The 6 faces of each removed hexahedron are extracted and added to the mesh as
+    quadrilateral elements. This is useful for preserving boundary information when
+    removing elements.
+
+    Args:
+        mesh: The meshio Mesh object containing hexahedral elements to remove.
+        tag: The name of the cell_data field containing intersection flags.
+            Hexahedra with flag value of 1 are removed. Defaults to "intersection".
+        new_quad_tag: The name of the cell_data field to use for newly created
+            quadrilateral faces from removed hexahedra. Defaults to "tag".
+        new_quad_value: The flag value to assign to the newly created quadrilateral
+            faces from removed hexahedra. Defaults to 1.
+
+    Returns:
+        None. Modifies the mesh object in-place by removing marked hexahedra
+        and adding their faces as quadrilaterals to cell_data.
+    """
 
     if mesh.cell_data is None or tag not in mesh.cell_data:
         print(f"Warning: No '{tag}' field found in mesh cell_data")
         return
 
-    if "tag" not in mesh.cell_data:
-        mesh.cell_data["tag"] = []
+    if new_quad_tag not in mesh.cell_data:
+        mesh.cell_data[new_quad_tag] = []
 
     hex_block_idx = None
     hex_flags = None
@@ -214,9 +285,9 @@ def remove_3d_cells(mesh, tag="intersection", new_quad_value=1):
         print("Warning: No hexahedral elements found in mesh")
         return
 
-    if len(mesh.cell_data["tag"]) <= hex_block_idx:
+    if len(mesh.cell_data[new_quad_tag]) <= hex_block_idx:
         num_hex = len(mesh.cells[hex_block_idx].data)
-        mesh.cell_data["tag"].append(np.zeros(num_hex, dtype=int))
+        mesh.cell_data[new_quad_tag].append(np.zeros(num_hex, dtype=int))
 
     hex_cells = mesh.cells[hex_block_idx].data
     new_quads = []
@@ -252,9 +323,9 @@ def remove_3d_cells(mesh, tag="intersection", new_quad_value=1):
     if len(new_quads) > 0:
         new_quads_array = np.array(new_quads)
         if quad_block_idx is None:
-            mesh.cells.append(CellBlock("quad", new_quads_array))
+            mesh.cells.append(meshio.CellBlock("quad", new_quads_array))
             for key, data_list in mesh.cell_data.items():
-                if key == "tag":
+                if key == new_quad_tag:
                     data_list.append(
                         np.full(len(new_quads_array), new_quad_value, dtype=int)
                     )
@@ -268,7 +339,7 @@ def remove_3d_cells(mesh, tag="intersection", new_quad_value=1):
             )
             for key, data_list in mesh.cell_data.items():
                 quad_flags = data_list[quad_block_idx]
-                if key == "tag":
+                if key == new_quad_tag:
                     new_flags = np.full(len(new_quads_array), new_quad_value, dtype=int)
                 elif key == "dim":
                     new_flags = np.full(len(new_quads_array), 2, dtype=int)
@@ -287,8 +358,23 @@ def remove_3d_cells(mesh, tag="intersection", new_quad_value=1):
     print(f"Added {len(new_quads)} quad elements from removed hexahedra faces")
 
 
-def remove_2d_cells(mesh, tag="intersection"):
-    """Remove 2D quadrilateral cells marked with tag=1 from the mesh."""
+def remove_2d_cells(mesh: meshio.Mesh, tag: str = "intersection") -> None:
+    """Remove 2D quadrilateral cells marked with tag=1 from the mesh.
+
+    Removes all quadrilateral elements that are marked as intersecting
+    (tag flag = 1). All associated cell_data entries for removed elements
+    are also removed to keep the mesh consistent.
+
+    Args:
+        mesh: The meshio Mesh object containing quadrilateral elements to remove.
+        tag: The name of the cell_data field containing intersection flags.
+            Quadrilaterals with flag value of 1 are removed.
+            Defaults to "intersection".
+
+    Returns:
+        None. Modifies the mesh object in-place by removing marked quadrilaterals
+        and their associated cell_data.
+    """
 
     if mesh.cell_data is None or tag not in mesh.cell_data:
         print(f"Warning: No '{tag}' field found in mesh cell_data")
@@ -315,8 +401,24 @@ def remove_2d_cells(mesh, tag="intersection"):
     print(f"Removed {len(quad_cells) - len(keep_indices)} quadrilateral elements")
 
 
-def remove_cell_type_from_mesh(mesh, cell_type_to_remove="quad"):
-    """Create a deep copy of the mesh with all elements of a specific type removed."""
+def remove_cell_type_from_mesh(
+    mesh: meshio.Mesh, cell_type_to_remove: str = "quad"
+) -> meshio.Mesh:
+    """Create a deep copy of the mesh with all elements of a specific type removed.
+
+    Creates a new mesh that is a deep copy of the input mesh with all cells of
+    a specified type removed. The original mesh is not modified. All associated
+    cell_data entries are also removed.
+
+    Args:
+        mesh: The meshio Mesh object to process.
+        cell_type_to_remove: The type of cells to remove from the mesh.
+            Defaults to "quad". Valid types include "quad", "hexahedron", etc.
+
+    Returns:
+        A new meshio.Mesh object that is a copy of the input mesh with all cells
+        of the specified type removed.
+    """
 
     mesh_copy = copy.deepcopy(mesh)
 

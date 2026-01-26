@@ -49,16 +49,22 @@ def main() -> None:
     write_mesh_to_vtu(mesh, folder / Path("output_original.vtu"))
 
     # Mark intersecting 3D cells
-    mark_intersecting_hexahedra(mesh, stl_mesh, surface_tol=1e-12)
+    mark_intersecting_hexahedra(mesh, stl_mesh)
 
     # Remove intersecting 3D cells (and add their faces to quad list)
-    remove_3d_cells(mesh)
+    remove_3d_cells(mesh, new_quad_value=101)
 
     # Mark intersecting 2D quads (including newly created faces)
-    mark_intersecting_quads(mesh, stl_mesh, surface_tol=1e-4)
+    mark_intersecting_quads(mesh, stl_mesh)
 
     # Write to VTU file (ASCII for easier inspection)
     write_mesh_to_vtu(mesh, folder / Path("output_test.vtu"))
+
+    # Remove intersecting 2D quads
+    remove_2d_cells(mesh)
+
+    # Write to VTU file (ASCII for easier inspection)
+    write_mesh_to_vtu(mesh, folder / Path("output_quads.vtu"))
 
     # Export the STL surface for reference
     write_mesh_to_vtu(stl_mesh, folder / Path("vertical_plane.vtu"))
