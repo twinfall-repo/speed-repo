@@ -18,7 +18,15 @@ rm -rf FILES_MPI/*
 rm -rf MONITOR/*
 rm -rf POST-PROC/*
 
+# Clean the archive files if they exist
+rm -f VTKOUT.tar.gz
+rm -f MONITOR.tar.gz
+
 time mpirun -np $TOTAL_MPI_PROCESSES  -x OMP_NUM_THREADS=$THREADS  $SPEED_PROGRAM >& $OUTPUT
 #time $SPEED_PROGRAM >& $OUTPUT
+
+tar -czf VTKOUT.tar.gz VTKOUT
+tar -czf MONITOR.tar.gz MONITOR
+
 wait
 
