@@ -30,4 +30,4 @@ From: ubuntu:latest
     cd && mkdir run
 
 %runscript
-    exec /bin/bash
+    exec /bin/bash && cd && cd run && . run_speed.sh
