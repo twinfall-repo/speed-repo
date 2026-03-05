@@ -2,8 +2,18 @@
 
 export SPEED_PROGRAM=SPEED
 export OUTPUT=speed.out 
-export TOTAL_MPI_PROCESSES=4
 export THREADS=1
+
+if [[ -n "$1" ]]; then
+	if [[ "$1" =~ ^[0-9]+$ ]] && [[ "$1" -ge 1 ]]; then
+		export TOTAL_MPI_PROCESSES="$1"
+	else
+		echo "Error: first argument must be a positive integer (TOTAL_MPI_PROCESSES)." >&2
+		exit 1
+	fi
+else
+	export TOTAL_MPI_PROCESSES=1
+fi
  
 let NCORES=$TOTAL_MPI_PROCESSES
 echo "Running on $NCORES cores"
