@@ -30,5 +30,5 @@ From: ubuntu:latest
     cd && mkdir run
 
 %runscript
-    cd /root/run
-    exec /bin/bash ./run_speed.sh
+    /bin/bash
+    cd /root/run && . run_speed.sh
