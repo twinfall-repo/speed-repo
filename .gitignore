@@ -177,3 +177,8 @@ nbproject/
 *.py_o
 *.txt
 pygeon.code-workspace
+
+*.stl
+*.mesh
+*.mate
+*.step
