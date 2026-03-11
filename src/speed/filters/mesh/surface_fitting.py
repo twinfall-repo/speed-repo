@@ -93,6 +93,8 @@ def center_xy(pts, z_scale=1.0):
     x_center = (x_min + x_max) / 2
     y_center = (y_min + y_max) / 2
 
+    print(x_center, y_center)
+
     centered_pts = pts.copy()
     centered_pts[:, 0] -= x_center
     centered_pts[:, 1] -= y_center
@@ -166,13 +168,13 @@ def fit_surface(pts):
     from scipy.interpolate import LinearNDInterpolator
 
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    
+
     # Create Delaunay triangulation in XY plane
     tri = Delaunay(np.column_stack([x, y]))
-    
+
     # Create interpolator using the triangulation
     interpolator = LinearNDInterpolator(tri, z)
-    
+
     return pts, tri.simplices, interpolator
 
 
@@ -199,7 +201,7 @@ def extract_intersection_curves(pts, interpolator, plane_values, num_samples=200
         try:
             # Create points along this X-plane
             x_vec = np.full_like(y_vec, plane_x)
-            
+
             # Interpolate z-values
             z_vals = interpolator(x_vec, y_vec)
 
@@ -213,7 +215,9 @@ def extract_intersection_curves(pts, interpolator, plane_values, num_samples=200
             curve_points = np.column_stack([y_vec[valid], z_vals[valid]])
             intersections.append(curve_points)
         except Exception as e:
-            print(f"Warning: Could not sample surface for plane at x={plane_x:.2f}: {e}")
+            print(
+                f"Warning: Could not sample surface for plane at x={plane_x:.2f}: {e}"
+            )
             continue
 
     return intersections
@@ -254,7 +258,7 @@ def export_surface_mesh_vtk(pts, triangles, filename):
 def export_surface_vtk(xi_grid, yi_grid, zi_grid, filename):
     """
     Export the fitted surface as a VTK structured grid for visualization in ParaView.
-    
+
     DEPRECATED: Use export_surface_mesh_vtk for triangulated meshes instead.
 
     Args:

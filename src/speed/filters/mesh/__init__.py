@@ -17,6 +17,7 @@ from .mesh_operations import (
     mark_intersecting_quads,
     remove_3d_cells,
     remove_2d_cells,
+    remove_orphan_quads,
     remove_cell_type_from_mesh,
 )
 
@@ -30,5 +31,6 @@ __all__ = [
     "mark_intersecting_quads",
     "remove_3d_cells",
     "remove_2d_cells",
+    "remove_orphan_quads",
     "remove_cell_type_from_mesh",
 ]

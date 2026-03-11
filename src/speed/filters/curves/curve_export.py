@@ -190,6 +190,10 @@ def export_curves_sat(
         if n_points < 2:
             continue
 
+        # Check if curve is closed (first and last points are the same)
+        is_closed = np.allclose(points_3d[0], points_3d[-1], atol=1e-6)
+        curve_type = "closed" if is_closed else "open"
+
         now = datetime.now().strftime("%a %b %d %H:%M:%S %Y")
 
         with open(sat_filename, "w") as f:
@@ -227,7 +231,7 @@ def export_curves_sat(
             # intcurve-curve entity as degree-1 nubs polyline
             f.write(
                 "intcurve-curve $-1 -1 -1 $-1 forward "
-                f"{{ exactcur 0 full nubs 1 open {n_points}\n"
+                f"{{ exactcur 0 full nubs 1 {curve_type} {n_points}\n"
             )
 
             # Knot vector (multiplicity 1, uniform)

@@ -14,7 +14,7 @@ from pathlib import Path
 # Add src to path to import speed modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "speed" / "filters"))
 
-from mesh.mesh_io import read_mesh, scale_mesh_z, write_mesh_to_vtu, write_mesh
+from mesh.mesh_io import read_mesh, write_mesh_to_vtu
 
 
 def main() -> None:
@@ -27,10 +27,8 @@ def main() -> None:
     folder = Path(
         "/home/elle/Dropbox/Work/PresentazioniArticoli/progetti/cariplo/cubit_python/CubitPython4SPEED"
     )
-    file_name = Path("Meshfile.mesh")
-    vtk_file_name = Path("output.vtu")
-    mesh_file_name = Path("output_scaled.mesh")
-    z_factor = 1.0  # 5 # Scale z coordinates by this factor
+    file_name = Path("Meshfile_full.mesh")
+    vtk_file_name = Path("output_full.vtu")
 
     # Output directory - current script location
     folder_out = Path(__file__).parent
@@ -38,24 +36,17 @@ def main() -> None:
     # Usage
     path = folder / file_name
     vtk_path = folder_out / vtk_file_name
-    mesh_path = folder_out / mesh_file_name
 
     print(f"Reading mesh from: {path}")
     # Read mesh
     mesh = read_mesh(path)
-    print(f"  Nodes: {len(mesh.points)}")
-
-    # Apply z-scaling
-    print(f"Scaling z-coordinates by factor: {z_factor}")
-    mesh_scaled = scale_mesh_z(mesh, z_factor=z_factor)
+    print(f"xmim x: {mesh.points[:, 0].min()}, xmax: {mesh.points[:, 0].max()}")
+    print(f"ymin y: {mesh.points[:, 1].min()}, ymax: {mesh.points[:, 1].max()}")
+    print(f"zmin z: {mesh.points[:, 2].min()}, zmax: {mesh.points[:, 2].max()}")
 
     # Write to VTU file
     print(f"Writing VTU file to: {vtk_path}")
-    write_mesh_to_vtu(mesh_scaled, vtk_path)
-
-    # Write back to native mesh format
-    print(f"Writing mesh file to: {mesh_path}")
-    write_mesh(mesh_scaled, mesh_path)
+    write_mesh_to_vtu(mesh, vtk_path)
 
     print("Done!")
 

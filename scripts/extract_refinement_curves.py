@@ -21,6 +21,8 @@ Usage:
 import sys
 from pathlib import Path
 import numpy as np
+from shapely.geometry import Polygon, MultiPolygon
+from shapely.ops import unary_union
 
 # Add src to path to import speed modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "speed" / "filters"))
@@ -161,6 +163,61 @@ def export_curve_version(curves, x, y, z, folder, version_name, z_scale=1.0) -> 
     )
 
 
+def _polygon_to_closed_curve(polygon: Polygon) -> np.ndarray:
+    coords = np.array(polygon.exterior.coords)
+    if len(coords) == 0:
+        return coords
+    if not np.allclose(coords[0], coords[-1]):
+        coords = np.vstack([coords, coords[0]])
+    return coords
+
+
+def convex_envelope_curves(curves, union: bool = False) -> list[np.ndarray]:
+    """
+    Build convex envelope curves derived from input curves.
+
+    Args:
+        curves: List of closed curves (np.ndarray of shape (n, 2))
+        union: If True, compute a single convex hull for the union of all curves.
+
+    Returns:
+        List of convex-hull curves.
+    """
+    polygons = []
+
+    for curve in curves:
+        if len(curve) < 3:
+            continue
+        poly = Polygon(curve)
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+        if poly.is_empty:
+            continue
+        polygons.append(poly)
+
+    if not polygons:
+        return []
+
+    if union:
+        merged = unary_union(polygons)
+        hull = merged.convex_hull
+        if isinstance(hull, Polygon):
+            return [_polygon_to_closed_curve(hull)]
+        if isinstance(hull, MultiPolygon):
+            return [_polygon_to_closed_curve(p) for p in hull.geoms]
+        return []
+
+    convex_curves = []
+    for poly in polygons:
+        hull = poly.convex_hull
+        if isinstance(hull, Polygon):
+            convex_curves.append(_polygon_to_closed_curve(hull))
+        elif isinstance(hull, MultiPolygon):
+            convex_curves.extend(_polygon_to_closed_curve(p) for p in hull.geoms)
+
+    return convex_curves
+
+
 def main() -> None:
     """
     Main processing pipeline for DEM refinement curve extraction.
@@ -199,12 +256,12 @@ def main() -> None:
     gradient_percentile = 90
     z_scale = 5.0
     simplify = True
-    enlarge_percentage = (
-        30.0  # Enlargement percentage (e.g., 10.0 for 10% area increase)
-    )
+    enlarge_percentage = 30.0  # normally I do: 30
     shrink_percentage = (
         0 * 17.5
     )  # Shrinkage percentage (e.g., 10.0 for 10% area reduction)
+    convex_envelope_from_enlarged = True
+    convex_envelope_union = False
 
     interp_factor = 2
 
@@ -267,6 +324,7 @@ def main() -> None:
 
     # Enlarge or shrink curves if requested
     curves_export = curves
+    curves_convex = []
     if enlarge_percentage > 0:
         print(f"\n4c. Enlarging curves by {enlarge_percentage}%...")
         curves_export = enlarge_curves(curves, enlarge_percentage, resolution=10)
@@ -283,6 +341,24 @@ def main() -> None:
             print("   ⚠ WARNING: Some enlarged curves are not properly closed!")
         else:
             print("   ✓ All enlarged curves are properly closed")
+
+        if convex_envelope_from_enlarged and len(curves_export) > 0:
+            print("\n4d. Building convex envelope(s) from enlarged curves...")
+            curves_convex = convex_envelope_curves(
+                curves_export, union=convex_envelope_union
+            )
+            print(
+                f"   Convex envelope complete: {len(curves_export)} enlarged → {len(curves_convex)} convex curves"
+            )
+
+            all_closed_convex, validation_convex = validate_curves_closed(
+                curves_convex, tolerance=1e-6
+            )
+            print_curve_validation(validation_convex, label="Convex")
+            if not all_closed_convex:
+                print("   ⚠ WARNING: Some convex curves are not properly closed!")
+            else:
+                print("   ✓ All convex curves are properly closed")
 
     elif shrink_percentage > 0:
         print(f"\n4c. Shrinking curves by {shrink_percentage}%...")
@@ -312,6 +388,16 @@ def main() -> None:
         export_curve_version(
             curves_export, x_fine, y_fine, z_fine, folder, "enlarged", z_scale
         )
+        if convex_envelope_from_enlarged and len(curves_convex) > 0:
+            export_curve_version(
+                curves_convex,
+                x_fine,
+                y_fine,
+                z_fine,
+                folder,
+                "enlarged_convex",
+                z_scale,
+            )
     elif shrink_percentage > 0:
         export_curve_version(
             curves_export, x_fine, y_fine, z_fine, folder, "shrunk", z_scale

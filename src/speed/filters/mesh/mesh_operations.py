@@ -396,9 +396,81 @@ def remove_2d_cells(mesh: meshio.Mesh, tag: str = "intersection") -> None:
     quad_cells = mesh.cells[quad_block_idx].data
     keep_indices = np.where(quad_flags == 0)[0]
     mesh.cells[quad_block_idx].data = quad_cells[keep_indices]
-    mesh.cell_data[tag][quad_block_idx] = quad_flags[keep_indices]
+    # Keep all cell_data arrays aligned for the quad block
+    for key in mesh.cell_data:
+        mesh.cell_data[key][quad_block_idx] = mesh.cell_data[key][quad_block_idx][
+            keep_indices
+        ]
 
     print(f"Removed {len(quad_cells) - len(keep_indices)} quadrilateral elements")
+    # Cleanup pass: ensure all remaining quads correspond to faces of existing hexes
+    remove_orphan_quads(mesh)
+
+
+def remove_orphan_quads(mesh: meshio.Mesh) -> int:
+    """Remove quads that are not faces of any existing hexahedron.
+
+    Builds the set of all hexahedron faces (ignoring orientation) and then
+    removes any quadrilateral element whose node set does not match any hex face.
+    All associated cell_data entries are kept aligned.
+
+    Args:
+        mesh: The meshio Mesh object to process in-place.
+
+    Returns:
+        The number of quadrilateral elements removed.
+    """
+
+    # Collect all hex faces as unordered node sets
+    hex_face_sets = set()
+    hex_face_connectivity = [
+        [0, 3, 2, 1],
+        [4, 5, 6, 7],
+        [0, 1, 5, 4],
+        [2, 3, 7, 6],
+        [0, 4, 7, 3],
+        [1, 2, 6, 5],
+    ]
+
+    for cell_block in mesh.cells:
+        if cell_block.type != "hexahedron":
+            continue
+        for hex_element in cell_block.data:
+            for face_nodes in hex_face_connectivity:
+                quad_element = hex_element[np.array(face_nodes)]
+                hex_face_sets.add(frozenset(quad_element.tolist()))
+
+    # If there are no hexes, drop all quads (nothing to be a face of)
+    quad_block_idx = None
+    for block_idx, cell_block in enumerate(mesh.cells):
+        if cell_block.type == "quad":
+            quad_block_idx = block_idx
+            break
+
+    if quad_block_idx is None:
+        return 0
+
+    quad_cells = mesh.cells[quad_block_idx].data
+    if len(quad_cells) == 0:
+        return 0
+
+    keep_mask = np.zeros(len(quad_cells), dtype=bool)
+    for i, q in enumerate(quad_cells):
+        q_set = frozenset(q.tolist())
+        keep_mask[i] = q_set in hex_face_sets
+
+    removed_count = int((~keep_mask).sum())
+    if removed_count == 0:
+        return 0
+
+    mesh.cells[quad_block_idx].data = quad_cells[keep_mask]
+    for key in mesh.cell_data:
+        mesh.cell_data[key][quad_block_idx] = mesh.cell_data[key][quad_block_idx][
+            keep_mask
+        ]
+
+    print(f"Removed {removed_count} orphan quadrilateral elements (not hex faces)")
+    return removed_count
 
 
 def remove_cell_type_from_mesh(

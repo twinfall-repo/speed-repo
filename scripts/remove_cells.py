@@ -1,9 +1,6 @@
 import sys
 from pathlib import Path
 
-import meshio
-import numpy as np
-
 # Add src to path to import speed modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "speed" / "filters"))
 
@@ -14,7 +11,6 @@ from mesh.mesh_operations import (
     mark_intersecting_quads,
     remove_3d_cells,
     remove_2d_cells,
-    remove_cell_type_from_mesh,
 )
 
 
@@ -27,9 +23,9 @@ def main() -> None:
     """
     # Folder of the test case relative to this script
     folder = Path(
-        "/home/elle/Dropbox/Work/PresentazioniArticoli/progetti/cariplo/cubit_python/CubitPython4SPEED"
+        "/home/elle/Dropbox/Work/PresentazioniArticoli/progetti/cariplo/codes/speed-repo/scripts/fine_grids_rialba"
     )
-    file_name = Path("Meshfile.mesh")
+    file_name = Path("output_scaled.mesh")
 
     # Usage
     path = folder / file_name
@@ -42,7 +38,7 @@ def main() -> None:
 
     # Read an stl mesh
     folder = Path(__file__).parent
-    stl_path = folder / Path("vertical_plane.stl")
+    stl_path = folder / Path("frattura_verticale_shifted.stl")
     stl_mesh = read_stl_mesh(stl_path)
 
     # Write to VTU file (ASCII for easier inspection)
@@ -65,9 +61,6 @@ def main() -> None:
 
     # Write to VTU file (ASCII for easier inspection)
     write_mesh_to_vtu(mesh, folder / Path("output_quads.vtu"))
-
-    # Export the STL surface for reference
-    write_mesh_to_vtu(stl_mesh, folder / Path("vertical_plane.vtu"))
 
     # Export mesh to Cubit format
     write_mesh(mesh, folder / Path("output_quads_cubit.mesh"))
